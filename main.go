@@ -4,32 +4,45 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
+	"net"
 	"os"
 )
 
 func main() {
-	filePath := "messages.txt"
-
-	fileToRead, err := os.Open(filePath)
+	protocol := "tcp"
+	port := ":42069"
+	l, err := net.Listen(protocol, port)
 	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return
+		log.Fatal(err)
+	}
+	defer l.Close()
+
+	for {
+		// Wait for a connection.
+		conn, err := l.Accept()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println("connection established...")
+
+		lines := getLinesChannel(conn)
+
+		// Loop over the channel and print each line as it comes in
+		for line := range lines {
+			fmt.Println(line)
+		}
+
+		// When the channel is closed (EOF or client disconnect), we log that
+		fmt.Println("connection closed...")
+
 	}
 
-	// Pass the opened file to getLinesChannel to get a channel of lines
-	lines := getLinesChannel(fileToRead)
-
-	// Loop over the lines received from the channel.
-	// The loop automatically stops when the channel is closed.
-	for line := range lines {
-		// Print each line with a "read: " prefix.
-		// This keeps output behavior consistent with the original code.
-		fmt.Printf("read: %s\n", line)
-	}
 }
 
-// getLinesChannel starts a goroutine that reads lines from the given file,
-// sends each line over a channel, and closes both the file and channel when done.
+// getLinesChannel reads lines from an io.ReadCloser (like net.Conn),
+// sends each line on a channel, and closes both the channel and connection when done.
 func getLinesChannel(f io.ReadCloser) <-chan string {
 	// Create an unbuffered channel of strings to hold the lines
 	lines := make(chan string)
@@ -57,7 +70,7 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 		// EOF is not treated as an error, but I/O problems (e.g., disk issues) are.
 		if err := scanner.Err(); err != nil {
 			// Print the error to standard error (not standard output)
-			fmt.Fprintln(os.Stderr, "Error reading file:", err)
+			fmt.Fprintln(os.Stderr, "Error reading from connection:", err)
 		}
 	}()
 
