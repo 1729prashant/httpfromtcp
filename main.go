@@ -77,3 +77,8 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 	// Return the channel immediately so the caller can start consuming lines
 	return lines
 }
+
+/*
+1. run this program
+2. in separate tab run printf "Do you have what it takes to be an engineer at TheStartup™?" | nc -c -w 1 127.0.0.1 42069
+*/
