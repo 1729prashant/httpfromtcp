@@ -1,14 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"io"
 	"os"
 )
 
 func main() {
 	filePath := "messages.txt"
-	buffer8bytes := make([]byte, 8)
 
 	fileToRead, err := os.Open(filePath)
 	if err != nil {
@@ -17,20 +16,17 @@ func main() {
 	}
 	defer fileToRead.Close()
 
-	for {
-		n, err := fileToRead.Read(buffer8bytes)
+	scanner := bufio.NewScanner(fileToRead)
 
-		if err != nil {
-			if err == io.EOF {
-				fmt.Println("End of file reached.")
-			} else {
-				fmt.Println("Error reading file:", err)
-			}
-			break // Exit the loop on error or EOF
-		}
+	// Iterate over each line in the file.
+	for scanner.Scan() {
+		line := scanner.Text()         // Get the current line as a string.
+		fmt.Printf("read: %s\n", line) // Process or print the line.
+	}
 
-		// Process the read bytes (n bytes were read into buffer[:n])
-		//fmt.Printf("Read %d bytes: %s (raw bytes: %v)\n", n, string(buffer8bytes[:n]), buffer8bytes[:n])
-		fmt.Printf("read: %s\n", string(buffer8bytes[:n]))
+	// Check for any errors encountered during scanning.
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error reading file:", err)
+		return
 	}
 }
