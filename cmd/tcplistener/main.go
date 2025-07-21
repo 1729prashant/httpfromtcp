@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io"
+	"httpfromtcp/internal/request"
 	"log"
 	"net"
-	"os"
 )
 
 func main() {
@@ -27,58 +25,22 @@ func main() {
 
 		fmt.Println("connection established...")
 
-		lines := getLinesChannel(conn)
+		//lines := getLinesChannel(conn)
+		req, err := request.RequestFromReader(conn)
 
-		// Loop over the channel and print each line as it comes in
-		for line := range lines {
-			fmt.Println(line)
+		if err != nil {
+			log.Println("Failed to parse request:", err)
+			continue
 		}
 
-		// When the channel is closed (EOF or client disconnect), we log that
+		// Print the parsed RequestLine in the specified format.
+		fmt.Println("Request line:")
+		fmt.Printf("- Method: %s\n", req.RequestLine.Method)
+		fmt.Printf("- Target: %s\n", req.RequestLine.RequestTarget)
+		fmt.Printf("- Version: %s\n", req.RequestLine.HttpVersion)
+
 		fmt.Println("connection closed...")
 
 	}
 
 }
-
-// getLinesChannel reads lines from an io.ReadCloser (like net.Conn),
-// sends each line on a channel, and closes both the channel and connection when done.
-func getLinesChannel(f io.ReadCloser) <-chan string {
-	// Create an unbuffered channel of strings to hold the lines
-	lines := make(chan string)
-
-	// Start a new goroutine so that reading doesn't block the caller
-	go func() {
-		// Ensure that the file is closed once the goroutine is done reading
-		defer f.Close()
-
-		// Ensure that the channel is closed after all lines are sent
-		defer close(lines)
-
-		// Create a scanner that reads from the file line by line.
-		scanner := bufio.NewScanner(f)
-
-		// Loop over each line in the file.
-		// scanner.Scan() returns true until the end of the file or an error occurs.
-		for scanner.Scan() {
-			// scanner.Text() returns the current line as a string (without newline).
-			// Send this line to the channel so the main function can consume it.
-			lines <- scanner.Text()
-		}
-
-		// After the loop, check whether an error occurred during scanning.
-		// EOF is not treated as an error, but I/O problems (e.g., disk issues) are.
-		if err := scanner.Err(); err != nil {
-			// Print the error to standard error (not standard output)
-			fmt.Fprintln(os.Stderr, "Error reading from connection:", err)
-		}
-	}()
-
-	// Return the channel immediately so the caller can start consuming lines
-	return lines
-}
-
-/*
-1. run this program
-2. in separate tab run printf "Do you have what it takes to be an engineer at TheStartup™?" | nc -c -w 1 127.0.0.1 42069
-*/
